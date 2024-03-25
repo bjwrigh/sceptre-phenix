@@ -56,9 +56,12 @@ func Topology(exp string, ignore []string) (topology, error) {
 
 		if !cached {
 			search.AddHostname(node.Name, node.ID)
-			search.AddDisk(node.Disk, node.ID)
 			search.AddType(node.Type, node.ID)
 			search.AddOSType(node.OSType, node.ID)
+
+			for i, disk := range node.Disk {
+				search.AddDisk(i, disk, node.ID)
+			}
 
 			for k, v := range node.Labels {
 				search.AddLabel(k, v, node.ID)

@@ -393,13 +393,15 @@ func (node *ExpressionTree) match(vm *VM) bool {
 		case "Disk":
 			{
 
-				match := strings.Contains(strings.ToLower(vm.Disk), node.term)
-				if match {
-					return match
+				for _, d := range vm.Disk {
+
+					match := strings.Contains(strings.ToLower(d), node.term)
+					if match {
+						return match
+					}
 				}
 
 				continue
-
 			}
 		}
 	}

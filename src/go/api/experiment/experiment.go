@@ -918,7 +918,7 @@ func deleteC2AndSnapshots(exp *types.Experiment) error {
 		}
 
 		hostname := node.General().Hostname()
-		snapshot := fmt.Sprintf("%s_%s_%s_snapshot", headnode, expName, hostname)
+		snapshot := fmt.Sprintf("%s_%s_%s_snapshot*", headnode, expName, hostname)
 
 		if err := file.DeleteFile(snapshot); err != nil {
 			return fmt.Errorf("deleting snapshot file for VM %s in experiment %s: %w", hostname, expName, err)

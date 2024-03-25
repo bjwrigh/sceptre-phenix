@@ -24,51 +24,57 @@ ns add-host localhost
 
 {{- $basedir := .BaseDir }}
 
-{{- range .Topology.Nodes }}
-    {{- if .External }}
+{{- range $node := .Topology.Nodes }}
+    {{- if $node.External }}
         {{ continue }}
     {{- end }}
 
 {{/* added space to place hostname above relevant block */}}
-## VM: {{ .General.Hostname }} ##
-    {{- if (derefBool .General.DoNotBoot) }}
-## DoNotBoot: {{ derefBool .General.DoNotBoot }} ##
+## VM: {{ $node.General.Hostname }} ##
+    {{- if (derefBool $node.General.DoNotBoot) }}
+## DoNotBoot: {{ derefBool $node.General.DoNotBoot }} ##
     {{- else }}
-        {{- if (derefBool .General.Snapshot) -}}
-        {{ $firstDrive := index .Hardware.Drives 0 }}
-disk snapshot {{ $firstDrive.Image }} {{ $.SnapshotName .General.Hostname }} 
-            {{- if gt (len .Injections) 0 }}
-disk inject {{ $.SnapshotName .General.Hostname }}:{{ $firstDrive.GetInjectPartition }} files {{ .FileInjects $basedir }}
+        {{- if (derefBool $node.General.Snapshot) -}}
+            {{- range $index, $driveElement := $node.Hardware.Drives }}
+                {{- if lt $index 1 }}
+disk snapshot {{ $driveElement.Image }} {{ $.SnapshotName $node.General.Hostname }}
+		        {{- else }}
+disk snapshot {{ $driveElement.Image }} {{ $.SnapshotName $node.General.Hostname }}_{{ $index }} 
+                {{- end }}
+            {{- end }}
+            {{- if gt (len $node.Injections) 0 }}
+                {{ $firstDrive := index $node.Hardware.Drives 0 }}
+disk inject {{ $.SnapshotName $node.General.Hostname }}:{{ $firstDrive.GetInjectPartition }} files {{ $node.FileInjects $basedir }}
             {{- end }}
         {{- end }}
 clear vm config
-        {{- if ne (index $.Schedules .General.Hostname) "" }}
-vm config schedule {{ index $.Schedules .General.Hostname }}
+        {{- if ne (index $.Schedules $node.General.Hostname) "" }}
+vm config schedule {{ index $.Schedules $node.General.Hostname }}
         {{- end }}
-vm config vcpus {{ .Hardware.VCPU }}
-vm config cpu {{ .Hardware.CPU }}
-vm config memory {{ .Hardware.Memory }}
-vm config snapshot {{ derefBool .General.Snapshot }}
-        {{- if (derefBool .General.Snapshot) }}
-vm config disk {{ .Hardware.DiskConfig ($.SnapshotName .General.Hostname) }}
+vm config vcpus {{ $node.Hardware.VCPU }}
+vm config cpu {{ $node.Hardware.CPU }}
+vm config memory {{ $node.Hardware.Memory }}
+vm config snapshot {{ derefBool $node.General.Snapshot }}
+        {{- if (derefBool $node.General.Snapshot) }}
+vm config disk {{ $node.Hardware.DiskConfig ($.SnapshotName $node.General.Hostname) }}
         {{- else }}
-vm config disk {{ .Hardware.DiskConfig "" }}
+vm config disk {{ $node.Hardware.DiskConfig "" }}
         {{- end }}
-        {{- if eq .Hardware.OSType "linux" }}
+        {{- if eq $node.Hardware.OSType "linux" }}
 vm config qemu-append -vga qxl
         {{- end }}
-        {{- if .Network }}
-vm config net {{ .Network.InterfaceConfig }}
+        {{- if $node.Network }}
+vm config net {{ $node.Network.InterfaceConfig }}
         {{- end }}
-        {{- range $config, $value := .Advanced }}
+        {{- range $config, $value := $node.Advanced }}
 vm config {{ $config }} {{ $value }}
         {{- end }}
-        {{- range $match, $replacement := .Overrides }}
+        {{- range $match, $replacement := $node.Overrides }}
 vm config qemu-override "{{ $match }}" "{{ $replacement }}"
         {{- end }}
-        {{- range $label, $value := .Labels }}
+        {{- range $label, $value := $node.Labels }}
 vm config tags {{ $label }} {{ $value }}
         {{- end }}
-vm launch {{ .General.VMType }} {{ .General.Hostname }}
+vm launch {{ $node.General.VMType }} {{ $node.General.Hostname }}
     {{- end }}
 {{- end }}

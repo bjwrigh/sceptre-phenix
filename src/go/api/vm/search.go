@@ -21,12 +21,14 @@ func (this *TopologySearch) AddHostname(k string, n int) {
 	this.Hostname[k] = n
 }
 
-func (this *TopologySearch) AddDisk(k string, n int) {
+func (this *TopologySearch) AddDisk(k int, disk string, n int) {
 	if this.Disk == nil {
 		this.Disk = make(map[string][]int)
 	}
 
-	this.Disk[k] = append(this.Disk[k], n)
+	disk = fmt.Sprintf("%d=%s", k, disk)
+
+	this.Disk[disk] = append(this.Disk[disk], n)
 }
 
 func (this *TopologySearch) AddType(k string, n int) {

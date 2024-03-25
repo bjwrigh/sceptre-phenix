@@ -583,8 +583,12 @@ func (this Hardware) DiskConfig(snapshot string) string {
 	for i, d := range this.DrivesF {
 		config := []string{d.ImageF}
 
-		if i == 0 && snapshot != "" {
-			config[0] = snapshot
+		if snapshot != "" {
+			if i < 1 {
+				config[0] = snapshot
+			} else {
+				config[0] = fmt.Sprintf("%s_%d", snapshot, i)
+			}
 		}
 
 		if d.IfaceF != "" {

@@ -22,35 +22,40 @@ func GetNewDiskName(expName, vmName string) (string, error) {
 		return "", fmt.Errorf("getting base disk image: %w", err)
 	}
 
-	name := strings.TrimSuffix(base, filepath.Ext(base))
+	var name string
+	for _, b := range base {
+		name = strings.TrimSuffix(b, filepath.Ext(b))
 
-	// For example, if name = ubuntu_server_20191117102805, then this
-	// will match and match[1] will be `ubuntu_server`.
-	if match := diskNameWithTstampRegex.FindStringSubmatch(name); match != nil {
-		name = match[1]
+		// For example, if name = ubuntu_server_20191117102805, then this
+		// will match and match[1] will be `ubuntu_server`.
+		if match := diskNameWithTstampRegex.FindStringSubmatch(name); match != nil {
+			name = match[1]
+		}
+
+		name = name + "_" + time.Now().Format("20060102150405") + filepath.Ext(b)
+
+		if ext := filepath.Ext(name); ext != ".qcow2" && ext != ".qc2" {
+			name += ".qc2"
+		}
 	}
-
-	name = name + "_" + time.Now().Format("20060102150405") + filepath.Ext(base)
-
-	if ext := filepath.Ext(name); ext != ".qcow2" && ext != ".qc2" {
-		name += ".qc2"
-	}
-
 	return name, nil
 }
 
-func getBaseImage(expName, vmName string) (string, error) {
+func getBaseImage(expName, vmName string) ([]string, error) {
 	exp, err := experiment.Get(expName)
 	if err != nil {
-		return "", fmt.Errorf("getting experiment %s: %w", expName, err)
+		return nil, fmt.Errorf("getting experiment %s: %w", expName, err)
 	}
 
 	vm := exp.Spec.Topology().FindNodeByName(vmName)
 	if vm == nil {
-		return "", fmt.Errorf("getting vm %s for experiment %s", vmName, expName)
+		return nil, fmt.Errorf("getting vm %s for experiment %s", vmName, expName)
 	}
-
-	return vm.Hardware().Drives()[0].Image(), nil
+	var drive []string
+	for _, d := range vm.Hardware().Drives() {
+		drive = append(drive, d.Image())
+	}
+	return drive, nil
 }
 
 type copier struct {

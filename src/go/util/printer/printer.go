@@ -98,7 +98,7 @@ func buildMultipleVMTable(table *tablewriter.Table, vms ...mm.VM) {
 			uptime = (time.Duration(vm.Uptime) * time.Second).String()
 		}
 
-		table.Append([]string{vm.Host, vm.Name, running, vm.Disk, strings.Join(ifaces, "\n"), uptime, strconv.Itoa(vm.RAM), strconv.Itoa(vm.CPUs), vm.OSType})
+		table.Append([]string{vm.Host, vm.Name, running, strings.Join(vm.Disk, " "), strings.Join(ifaces, "\n"), uptime, strconv.Itoa(vm.RAM), strconv.Itoa(vm.CPUs), vm.OSType})
 	}
 }
 
@@ -129,7 +129,7 @@ func buildSingleVMTable(table *tablewriter.Table, vm mm.VM) {
 	table.Append([]string{"Host", vm.Host})
 	table.Append([]string{"Name", vm.Name})
 	table.Append([]string{"Running", strconv.FormatBool(vm.Running)})
-	table.Append([]string{"Disk", vm.Disk})
+	table.Append([]string{"Disk", strings.Join(vm.Disk, " ")})
 	table.Append([]string{"Interfaces", strings.Join(ifaces, "\n")})
 	table.Append([]string{"Uptime", uptime})
 	table.Append([]string{"VCPUs", strconv.Itoa(vm.CPUs)})

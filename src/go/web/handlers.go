@@ -1656,10 +1656,11 @@ func RedeployVM(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		//ZBT: TODO may need to fix disk[0] pick below
 		opts := []vm.RedeployOption{
 			vm.CPU(v.CPUs),
 			vm.Memory(v.RAM),
-			vm.Disk(v.Disk),
+			vm.Disk(v.Disk[0]),
 			vm.Inject(inject),
 		}
 

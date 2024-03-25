@@ -8,6 +8,7 @@ import (
 	"phenix/web/proto"
 	"phenix/web/rbac"
 	"sort"
+	"strings"
 )
 
 func ExperimentToProtobuf(exp types.Experiment, status cache.Status, vms []mm.VM) *proto.Experiment {
@@ -94,7 +95,7 @@ func VMToProtobuf(exp string, vm mm.VM, topology ifaces.TopologySpec) *proto.VM 
 		Ipv4:       vm.IPv4,
 		Cpus:       uint32(vm.CPUs),
 		Ram:        uint32(vm.RAM),
-		Disk:       vm.Disk,
+		Disk:       strings.Join(vm.Disk, " "),
 		Uptime:     vm.Uptime,
 		Networks:   vm.Networks,
 		Taps:       vm.Taps,

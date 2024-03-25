@@ -155,7 +155,7 @@ func (this Minimega) GetVMInfo(opts ...Option) VMs {
 			State:    row["state"],
 			Running:  row["state"] == "RUNNING",
 			CCActive: activeC2[row["uuid"]],
-			CdRom:    row["cdrom"],
+			CdRom: row["cdrom"],
 		}
 
 		s := row["vlan"]
@@ -203,38 +203,40 @@ func (this Minimega) GetVMInfo(opts ...Option) VMs {
 		vm.CPUs, _ = strconv.Atoi(row["vcpus"])
 
 		// TODO: confirm multiple disks are separated by whitespace.
-		disk := strings.Fields(row["disks"])[0]
+		disks := strings.Fields(row["disks"])
 		// diskspec can include multiple settings separated by comma. Path to disk
 		// will always be first setting.
-		disk = strings.Split(disk, ",")[0]
+        //ZBT: Accounting for multi-disk VMs, disk slice, etc.
+		for _, disk := range disks {
+            disk = strings.Split(disk, ",")[0]
+            snapshot, _ := strconv.ParseBool(row["snapshot"])
 
-		snapshot, _ := strconv.ParseBool(row["snapshot"])
+            if snapshot {
+                cmd = mmcli.NewCommand()
+                cmd.Command = "disk info " + disk
 
-		if snapshot {
-			cmd = mmcli.NewCommand()
-			cmd.Command = "disk info " + disk
+                if !IsHeadnode(row["host"]) {
+                    cmd.Command = fmt.Sprintf("mesh send %s %s", row["host"], cmd.Command)
+                }
 
-			if !IsHeadnode(row["host"]) {
-				cmd.Command = fmt.Sprintf("mesh send %s %s", row["host"], cmd.Command)
-			}
+                // Only expect one row returned
+                // TODO (btr): check length to avoid a panic.
+                resp := mmcli.RunTabular(cmd)[0]
 
-			// Only expect one row returned
-			// TODO (btr): check length to avoid a panic.
-			resp := mmcli.RunTabular(cmd)[0]
+                if resp["backingfile"] == "" {
+                    vm.Disk = append(vm.Disk, resp["image"])
+                } else {
+                    vm.Disk = append(vm.Disk, resp["backingfile"])
+                }
+            } else {
+                // Attempting to get disk info when not using a snapshot will cause a
+                // locked file error.
+                vm.Disk = append(vm.Disk, disk)
+            }
+        }
 
-			if resp["backingfile"] == "" {
-				vm.Disk = resp["image"]
-			} else {
-				vm.Disk = resp["backingfile"]
-			}
-		} else {
-			// Attempting to get disk info when not using a snapshot will cause a
-			// locked file error.
-			vm.Disk = disk
-		}
-
-		vms = append(vms, vm)
-	}
+        vms = append(vms, vm)
+    }
 
 	return vms
 }
@@ -380,6 +382,7 @@ func (Minimega) RedeployVM(opts ...Option) error {
 			disk = o.disk
 		} else {
 			// Should only be one row of data since we filtered by VM name.
+            //ZBT: This code will likely break with multi-disk VMs. May want to check this later, not testing for now
 			disks := info[0]["disks"]
 
 			// Only do injects if this VM was originally deployed with a disk snapshot.
@@ -508,21 +511,10 @@ func (Minimega) DisconnectVMInterface(opts ...Option) error {
 }
 
 func (Minimega) CreateTunnel(opts ...Option) error {
-	host, err := GetVMHost(opts...)
-	if err != nil {
-		return fmt.Errorf("unable to determine what host the VM is scheduled on: %w", err)
-	}
-
 	o := NewOptions(opts...)
 
-	var cmdPrefix string
-
-	if !IsHeadnode(host) {
-		cmdPrefix = fmt.Sprintf("mesh send %s namespace %s", host, o.ns)
-	}
-
 	cmd := mmcli.NewNamespacedCommand(o.ns)
-	cmd.Command = fmt.Sprintf("%s cc tunnel %s %d %s %d", cmdPrefix, o.vm, o.srcPort, o.dstHost, o.dstPort)
+	cmd.Command = fmt.Sprintf("cc tunnel %s %d %s %d", o.vm, o.srcPort, o.dstHost, o.dstPort)
 
 	if err := mmcli.ErrorResponse(mmcli.Run(cmd)); err != nil {
 		return fmt.Errorf("creating tunnel to %s (%d:%s:%d): %w", o.vm, o.srcPort, o.dstHost, o.dstPort, err)
@@ -555,25 +547,12 @@ func (Minimega) GetTunnels(opts ...Option) []map[string]string {
 func (Minimega) CloseTunnel(opts ...Option) error {
 	tunnels := GetTunnels(opts...)
 
-	host, err := GetVMHost(opts...)
-	if err != nil {
-		return fmt.Errorf("unable to determine what host the VM is scheduled on: %w", err)
-	}
-
 	o := NewOptions(opts...)
-
-	var (
-		cmdPrefix string
-		errs      error
-	)
-
-	if !IsHeadnode(host) {
-		cmdPrefix = fmt.Sprintf("mesh send %s namespace %s", host, o.ns)
-	}
+	var errs error
 
 	for _, row := range tunnels {
 		cmd := mmcli.NewNamespacedCommand(o.ns)
-		cmd.Command = fmt.Sprintf("%s cc tunnel close %s %s", cmdPrefix, o.vm, row["id"])
+		cmd.Command = fmt.Sprintf("cc tunnel close %s %s", o.vm, row["id"])
 
 		if err := mmcli.ErrorResponse(mmcli.Run(cmd)); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("closing tunnel to %s (%s:%d): %w", o.vm, o.dstHost, o.dstPort, err))

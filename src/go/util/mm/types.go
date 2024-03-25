@@ -208,7 +208,7 @@ type VM struct {
 	IPv4       []string  `json:"ipv4"`
 	CPUs       int       `json:"cpus"`
 	RAM        int       `json:"ram"`
-	Disk       string    `json:"disk"`
+	Disk       []string  `json:"disk"`
 	OSType     string    `json:"osType"`
 	DoNotBoot  bool      `json:"dnb"`
 	Networks   []string  `json:"networks"`
